@@ -1,14 +1,22 @@
 require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
+const connectDB = require('./config/database')
+
 const app = express()
 const port = process.env.PORT || 3000
+
+// Connect to MongoDB
+connectDB()
 
 app.use(cors())
 app.use(express.json())
 
+// Routes
+app.use('/api/watches', require('./routes/watches'))
+
 app.get('/', (req, res) => {
-  res.send('Hello World!')
+  res.send('E-commerce API for Les Montres')
 })
 
 // API endpoint to get data

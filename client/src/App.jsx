@@ -1,83 +1,88 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
+import Header from './components/Header/Header'
+import ProductList from './components/ProductList/ProductList'
+import Cart from './components/Cart/Cart'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+function App() {
+  const [cart, setCart] = useState([])
+  const [isCartOpen, setIsCartOpen] = useState(false)
 
-export default function App() {
-  const [serverData, setServerData] = useState(null)
-  const [responseData, setResponseData] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const addToCart = (watch) => {
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => item._id === watch._id)
 
-  // Fetch data from server on component mount
-  useEffect(() => {
-    fetchDataFromServer()
-  }, [])
-
-  const fetchDataFromServer = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/data`)
-      const data = await response.json()
-      setServerData(data)
-    } catch (error) {
-      console.error('Error fetching data:', error)
-    }
+      if (existingItem) {
+        // Increase quantity if item already in cart
+        if (existingItem.quantity < watch.stock) {
+          return prevCart.map(item =>
+            item._id === watch._id
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          )
+        }
+        return prevCart // Don't add if at stock limit
+      } else {
+        // Add new item to cart
+        return [...prevCart, { ...watch, quantity: 1 }]
+      }
+    })
   }
 
-  const sendDataToServer = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/data`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: 'Hello from client!'
-        })
-      })
-      const data = await response.json()
-      setResponseData(data)
-    } catch (error) {
-      console.error('Error sending data:', error)
-    } finally {
-      setLoading(false)
+  const updateCartQuantity = (watchId, newQuantity) => {
+    if (newQuantity <= 0) {
+      removeFromCart(watchId)
+      return
     }
+
+    setCart(prevCart =>
+      prevCart.map(item =>
+        item._id === watchId
+          ? { ...item, quantity: Math.min(newQuantity, item.stock) }
+          : item
+      )
+    )
   }
+
+  const removeFromCart = (watchId) => {
+    setCart(prevCart => prevCart.filter(item => item._id !== watchId))
+  }
+
+  const cartCount = cart.reduce((total, item) => total + item.quantity, 0)
 
   return (
-    <div className="p-8">
-      <h1 className='text-3xl font-bold underline mb-8'>PFE Project - Client-Server Connection</h1>
+    <div className="min-h-screen bg-gray-50">
+      <Header
+        cartCount={cartCount}
+        onCartClick={() => setIsCartOpen(true)}
+      />
 
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">Data from Server:</h2>
-        {serverData ? (
-          <div className="bg-gray-100 p-4 rounded">
-            <p><strong>Message:</strong> {serverData.message}</p>
-            <p><strong>Data:</strong> {JSON.stringify(serverData.data)}</p>
+      <main>
+        <div className="bg-gradient-to-r from-blue-600 to-purple-700 text-white py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 className="text-4xl md:text-6xl font-bold mb-4">
+              Les Montres
+            </h1>
+            <p className="text-xl md:text-2xl mb-8">
+              Discover the finest collection of luxury watches
+            </p>
+            <p className="text-lg opacity-90">
+              From classic timepieces to modern masterpieces
+            </p>
           </div>
-        ) : (
-          <p>Loading data from server...</p>
-        )}
-      </div>
+        </div>
 
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4">Send Data to Server:</h2>
-        <button
-          onClick={sendDataToServer}
-          disabled={loading}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-        >
-          {loading ? 'Sending...' : 'Send Message to Server'}
-        </button>
+        <ProductList onAddToCart={addToCart} />
+      </main>
 
-        {responseData && (
-          <div className="bg-green-100 p-4 rounded mt-4">
-            <p><strong>Server Response:</strong></p>
-            <p>Success: {responseData.success ? 'Yes' : 'No'}</p>
-            <p>Received: {responseData.received}</p>
-            <p>Timestamp: {responseData.timestamp}</p>
-          </div>
-        )}
-      </div>
+      <Cart
+        cart={cart}
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        onUpdateQuantity={updateCartQuantity}
+        onRemoveItem={removeFromCart}
+      />
     </div>
   )
 }
+
+export default App
